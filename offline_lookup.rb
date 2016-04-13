@@ -53,14 +53,14 @@
 # TODO: support multiple offline lookups per model
 # TODO: support scope arg in use_offline_lookup (partial index)
 
-module OfflineIDLookup
+module OfflineLookup
   module ActiveRecord
     def use_offline_lookup(field = :name, key: :id, lookup_methods: true)
       class_attribute :offline_lookup_values, :offline_lookup_options
       self.offline_lookup_options = {field: field.to_s, key: key.to_s, lookup_methods: lookup_methods}.freeze
       self.offline_lookup_values = self.all.pluck(key, field).to_h.freeze
 
-      include OfflineIDLookup::Base
+      include OfflineLookup::Base
     end
   end
 
@@ -104,7 +104,7 @@ module OfflineIDLookup
 
   module Base
     extend ActiveSupport::Concern
-    builder = OfflineIDLookup::Builder.new(self.offline_lookup_options)
+    builder = OfflineLookup::Builder.new(self.offline_lookup_options)
 
     ### define value-named methods such as :two_hour_id and :two_hour?
 
@@ -149,4 +149,4 @@ module OfflineIDLookup
   end
 end
 
-ActiveRecord::Base.extend OfflineIDLookup::ActiveRecord
+ActiveRecord::Base.extend OfflineLookup::ActiveRecord
