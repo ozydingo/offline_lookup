@@ -55,45 +55,88 @@
 
 module OfflineIDLookup
   module ActiveRecord
-    def use_offline_lookup(field = :name, key: :id, identity_methods: false)
+    def use_offline_lookup(field = :name, key: :id, lookup_methods: true)
       class_attribute :offline_lookup_values, :offline_lookup_options
-      self.offline_lookup_options = {field: field.to_s, key: key.to_s, identity_methods: identity_methods}.freeze
+      self.offline_lookup_options = {field: field.to_s, key: key.to_s, lookup_methods: lookup_methods}.freeze
       self.offline_lookup_values = self.all.pluck(key, field).to_h.freeze
 
       include OfflineIDLookup::Base
     end
   end
 
+  class Builder
+    def initialize(options)
+      @field = options[:field]
+      @key = options[:key]
+    end
+
+    def sanitize(string)
+      s = string.strip.gsub(/[^\w\s]/,"").titlecase.gsub(/\s/, "").underscore
+      s = "_#{s}" if s.length == 0 || s[0] =~ /\d/
+      return s
+    end
+
+    # e.g., :two_hour_id
+    def key_method_name(value)
+      sanitize("#{value}_#{@key}")
+    end
+
+    def lookup_method_name(value)
+      santiize(value.to_s)
+    end
+
+    # e.g., :two_hour?
+    def indentiy_method_name(value)
+      lookup_method_name(value) + "?"
+    end
+
+    # e.g. :name_for_id(id)
+    def field_for_key_method_name
+      "#{@field}_for_#{@key}" 
+    end
+
+    # e.g. :id_for_name(name)
+    def key_for_field_method_name
+      "#{@key}_for_#{@field}" 
+    end
+
+  end
+
   module Base
     extend ActiveSupport::Concern
+    builder = OfflineIDLookup::Builder.new(self.offline_lookup_options)
 
-    # define methods such as :two_hour_id and :id_for_name
+    ### define value-named methods such as :two_hour_id and :two_hour?
+
     self.offline_lookup_values.each do |key, value|
-      # e.g., :two_hour_id
-      define_method "#{value.to_s.methodize}_#{self.offline_lookup_options[:key]}" do
+      define_method builder.key_method_name(value) do
         key
       end
 
-      # e.g., :two_hour?
-      if self.offline_lookup_options[:identity_methods]
-        define_method "#{value.to_s.methodize}?" do
-          self.attributes[self.offline_lookup_options[:key]] == key
+      define_method indentiy_method_name(value) do
+        self.attributes[self.offline_lookup_options[:key]] == key
+      end
+
+      # not "Offline", but lookup by indexed key. Also, synactic sugar.
+      if self.offline_lookup_options[:lookup_methods]
+        define_method lookup_method_name(value) do
+          key = self.offline_lookup_values.find{|k, v| v.to_s == value.to_s}
+          find(key)
         end
       end
     end
 
-    # e.g. :name_for_id(id)
-    define_method "#{self.offline_lookup_options[:field]}_for_#{self.offline_lookup_options[:key]}" do |key|
-      self.offline_lookup_values(key)
+
+    ### define statically-named methods where you pass in the named value, e.g., id_for_name(:two_hour)
+
+    define_method field_for_key_method_name do |key_value|
+      self.offline_lookup_values(key_value)
     end
 
-    # e.g. :id_for_name(name)
-    define_method "#{self.offline_lookup_options[:key]}_for_#{self.offline_lookup_options[:field]}" do |value|
-      self.offline_lookup_values.find{|k, v| v.to_s == value.to_s}
+    define_method key_for_field_method_name do |field_value|
+      self.offline_lookup_values.find{|k, v| v.to_s == field_value.to_s}
     end
 
-    # e.g. quick_lookup(:two_hour)
-    # not offline, but looks up by key which is usually indexed. Also syntactic sugar.
     def quick_lookup(value)
       key = self.offline_lookup_values.find{|k, v| v.to_s == value.to_s}
       find_by(self.offline_lookup_options[:key] => key)
@@ -102,6 +145,7 @@ module OfflineIDLookup
       key = self.offline_lookup_values.find{|k, v| v.to_s == value.to_s}
       find(key)
     end
+
   end
 end
 
