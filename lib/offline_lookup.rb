@@ -71,18 +71,26 @@ module OfflineLookup
     end
 
     def sanitize(string)
-      s = string.strip.gsub(/[^\w\s]/,"").titlecase.gsub(/\s/, "").underscore
-      s = "_#{s}" if s.length == 0 || s[0] =~ /\d/
-      return s
+      #:methodize went away. Where did it go?
+      #1. Replace illegal chars and _ boundaries with " " boundary
+      string = string.gsub(/[^a-zA-Z\d]+/," ").strip
+      #2. Insert " " boundary at snake-case boundaries
+      string.gsub!(/([a-z])([A-Z])/){|s| "#{$1} #{$2}"}
+      #3. underscore
+      string.gsub!(/\s+/, "_")
+      string.downcase!
+      #4. Append underscore if name begins with digit
+      string = "_#{string}" if string.length == 0 || string[0] =~ /\d/
+      return string
     end
 
     # e.g., :two_hour_id
     def key_method_name(value)
-      sanitize("#{value}_#{@key}")
+      sanitize "#{value}_#{@key}"
     end
 
     def lookup_method_name(value)
-      santiize(value.to_s)
+      sanitize value.to_s
     end
 
     # e.g., :two_hour?
@@ -92,58 +100,60 @@ module OfflineLookup
 
     # e.g. :name_for_id(id)
     def field_for_key_method_name
-      "#{@field}_for_#{@key}" 
+      sanitize "#{@field}_for_#{@key}"
     end
 
     # e.g. :id_for_name(name)
     def key_for_field_method_name
-      "#{@key}_for_#{@field}" 
+      sanitize "#{@key}_for_#{@field}"
     end
 
   end
 
   module Base
     extend ActiveSupport::Concern
-    builder = OfflineLookup::Builder.new(self.offline_lookup_options)
 
-    ### define value-named methods such as :two_hour_id and :two_hour?
+    included do
+      builder = OfflineLookup::Builder.new(self.offline_lookup_options)
 
-    self.offline_lookup_values.each do |key, value|
-      define_method builder.key_method_name(value) do
-        key
-      end
+      ### define value-named methods such as :two_hour_id and :two_hour?
 
-      define_method indentiy_method_name(value) do
-        self.attributes[self.offline_lookup_options[:key]] == key
-      end
+      self.offline_lookup_values.each do |key, value|
+        define_singleton_method(builder.key_method_name(value)) do
+          key
+        end
 
-      # not "Offline", but lookup by indexed key. Also, synactic sugar.
-      if self.offline_lookup_options[:lookup_methods]
-        define_method lookup_method_name(value) do
-          key = self.offline_lookup_values.find{|k, v| v.to_s == value.to_s}
-          find(key)
+        define_singleton_method(builder.indentiy_method_name(value)) do
+          self.attributes[self.offline_lookup_options[:key]] == key
+        end
+
+        # not "Offline", but lookup by indexed key. Also, synactic sugar.
+        if self.offline_lookup_options[:lookup_methods]
+          define_singleton_method(builder.lookup_method_name(value)) do
+            key = self.offline_lookup_values.find{|k, v| v.to_s == value.to_s}.first
+            find(key)
+          end
         end
       end
+  
+
+      ### define statically-named methods where you pass in the named value, e.g., id_for_name(:two_hour)
+
+      define_singleton_method(builder.field_for_key_method_name) do |key_value|
+        self.offline_lookup_values[key_value]
+      end
+
+      define_singleton_method(builder.key_for_field_method_name) do |field_value|
+        self.offline_lookup_values.find{|k, v| v.to_s == field_value.to_s}.first
+      end
+
     end
 
-
-    ### define statically-named methods where you pass in the named value, e.g., id_for_name(:two_hour)
-
-    define_method field_for_key_method_name do |key_value|
-      self.offline_lookup_values(key_value)
-    end
-
-    define_method key_for_field_method_name do |field_value|
-      self.offline_lookup_values.find{|k, v| v.to_s == field_value.to_s}
-    end
-
-    def quick_lookup(value)
-      key = self.offline_lookup_values.find{|k, v| v.to_s == value.to_s}
-      find_by(self.offline_lookup_options[:key] => key)
-    end
-    def quick_lookup!(value)
-      key = self.offline_lookup_values.find{|k, v| v.to_s == value.to_s}
-      find(key)
+    module ClassMethods
+      def quick_lookup(value)
+        key = self.offline_lookup_values.find{|k, v| v.to_s == value.to_s}.first
+        find(key)
+      end
     end
 
   end
