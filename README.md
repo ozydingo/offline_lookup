@@ -1,6 +1,6 @@
 ##Offline Lookup
 
-Alhpa (0.0.2). Use at your own risk.
+Alhpa (0.0.3). Use at your own risk.
 
 IMPORTANT: don't use this for models that have a lot of data!!
 This is basically a in-memory pseudo-index intended to speed up quick, repeated

@@ -4,9 +4,14 @@
 
 module OfflineLookup
   module ActiveRecord
-    def use_offline_lookup(field = :name, key: :id, identiyy_methods: true, lookup_methods: true)
+    def use_offline_lookup(field = :name, key: :id, identity_methods: true, lookup_methods: true)
       class_attribute :offline_lookup_values, :offline_lookup_options
-      self.offline_lookup_options = {field: field.to_s, key: key.to_s, lookup_methods: lookup_methods}.freeze
+      self.offline_lookup_options = {
+        field: field.to_s,
+        key: key.to_s,
+        identity_methods: !!identity_methods,
+        lookup_methods: !!lookup_methods
+      }.freeze
       self.offline_lookup_values = self.all.pluck(key, field).to_h.freeze
 
       include OfflineLookup::Base
@@ -74,12 +79,12 @@ module OfflineLookup
         end
 
         # instance method: true if instance is of named type (e.g. FooType.first.bar?)
-        if self.offline_lookup_options[:identiyy_methods]
+        if self.offline_lookup_options[:identity_methods]
           define_method(builder.indentiy_method_name(value)) do
             self.attributes[self.offline_lookup_options[:key]] == key
           end
         end
-        
+
         # class method: get instance by named method (e.g. FooType.bar)
         # not "Offline", but lookup by indexed key. Also, synactic sugar.
         if self.offline_lookup_options[:lookup_methods]
