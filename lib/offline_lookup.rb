@@ -89,7 +89,7 @@ module OfflineLookup
         # not "Offline", but lookup by indexed key. Also, synactic sugar.
         if self.offline_lookup_options[:lookup_methods]
           define_singleton_method(builder.lookup_method_name(value)) do
-            key = self.offline_lookup_values.find{|k, v| v.to_s == value.to_s}.first
+            key = self.offline_lookup_values.find{|k, v| v.to_s == value.to_s}.try(:first)
             find(key)
           end
         end
@@ -104,7 +104,7 @@ module OfflineLookup
 
       # e.g. FooType.id_for_name("Bar")
       define_singleton_method(builder.key_for_field_method_name) do |field_value|
-        self.offline_lookup_values.find{|k, v| v.to_s == field_value.to_s}.first
+        self.offline_lookup_values.find{|k, v| v.to_s == field_value.to_s}.try(:first)
       end
 
     end
