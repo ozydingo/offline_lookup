@@ -138,6 +138,21 @@ end
 Admin.id_for_name("John Doe")
 ```
 
+You can also define your own method of generaing the lookup name using the `:transform` options. The default is to ust the field, or delimiter-concatentaed fields. To specify a transofmation, provide a lambda whose arguments are the fields being used by OfflineLookup
+
+```
+class Admin < ActiveRecord::Base
+  use_offline_lookup :lastname, transform: ->(lastname){"lookup_#{lastname}"}
+end
+```
+
+Or for multiple fields
+```
+class Admin < ActiveRecord::Base
+  use_offline_lookup :firstname, :lastname, transform: ->(first, last){"#{first.first}_#{last}"}
+end
+```
+
 ## Known Issues
 
 If two entries in the table have the same value in the specified field, all but one will get overwritten.
