@@ -5,4 +5,4 @@ require 'offline_lookup/active_record.rb'
 require 'offline_lookup/base.rb'
 require 'offline_lookup/builder.rb'
 
-ActiveRecord::Base.extend OfflineLookup::ActiveRecord
+ActiveRecord::Base.include OfflineLookup::ActiveRecord

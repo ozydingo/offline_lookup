@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
   s.description = "Offline indexing of small tables syntactic sugar & less db touching"
   s.authors     = ["Andrew Schwartz"]
   s.email       = 'ozydingo@gmail.com'
-  s.files       = ["README.md", "lib/**/*.rb"]
+  s.files       = ["README.md", *Dir["lib/**/*"]]
   # s.homepage    = 'http://rubygems.org/gems/hola'
   s.license       = 'MIT'
 end
