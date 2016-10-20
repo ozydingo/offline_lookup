@@ -31,6 +31,11 @@ Add `lookup` method to allow lookup by key'd name without risking bad / reserved
 
 You can now specify multiple columns for lookup! The values are by default joined with a " " (note this translates to "_" for method names). You can configure this delimiter and what to do with `nil` values.
 
+v1.1.0
+I forget. Probably a big bugfix.
+
+v1.2.0
+Definitely a big bugfix. The core OfflineLookup module was getting included in all of ActiveRecord, which mistakenly included callback methods that depended on the existence of `self.offline_lookup_options`. This has been fixed and this behavior is now only exhibited on models that explicitly call `use_offline_lookup`
 
 
 ## How To Use It
